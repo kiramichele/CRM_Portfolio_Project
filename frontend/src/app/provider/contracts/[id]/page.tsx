@@ -20,7 +20,12 @@ export default async function ProviderContractPage({ params }: { params: Promise
       >
         <ArrowLeft className="h-4 w-4" /> Contracts
       </Link>
-      <ContractView contract={result.contract} threadId={result.threadId} viewer="provider" />
+      <ContractView
+        contract={result.contract}
+        threadId={result.threadId}
+        viewer="provider"
+        canAct={!ctx.isImpersonating}
+      />
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getEffectiveContext } from '@/lib/auth'
 
-export type SendResult = { error?: string } | null
+export type SendResult = { error?: string; id?: string } | null
 
 export async function sendMessageAction(threadId: string, body: string): Promise<SendResult> {
   const trimmed = body.trim()
@@ -17,13 +17,13 @@ export async function sendMessageAction(threadId: string, body: string): Promise
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('messages').insert({
-    thread_id: threadId,
-    sender_id: ctx.realProfile.id,
-    body: trimmed,
-  })
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({ thread_id: threadId, sender_id: ctx.realProfile.id, body: trimmed })
+    .select('id')
+    .single()
   if (error) return { error: error.message }
 
   revalidatePath(`/messages/${threadId}`)
-  return null
+  return { id: data!.id }
 }

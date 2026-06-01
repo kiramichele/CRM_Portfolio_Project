@@ -20,7 +20,12 @@ export default async function ClientContractPage({ params }: { params: Promise<{
       >
         <ArrowLeft className="h-4 w-4" /> Contracts
       </Link>
-      <ContractView contract={result.contract} threadId={result.threadId} viewer="client" />
+      <ContractView
+        contract={result.contract}
+        threadId={result.threadId}
+        viewer="client"
+        canAct={!ctx.isImpersonating}
+      />
     </div>
   )
 }

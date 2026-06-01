@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge, MilestoneStatusBadge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { MilestoneActions } from '@/components/milestone-actions'
+import { AddMilestoneForm } from '@/components/add-milestone-form'
 import { formatMoney, timeAgo } from '@/lib/utils'
 import { MessageSquare } from 'lucide-react'
 import type { Contract, Milestone } from '@/lib/database.types'
@@ -17,10 +19,12 @@ export function ContractView({
   contract,
   threadId,
   viewer,
+  canAct,
 }: {
   contract: ContractWithRelations
   threadId: string | null
   viewer: 'client' | 'provider'
+  canAct: boolean
 }) {
   const milestones = [...(contract.milestones ?? [])].sort((a, b) => a.sort_order - b.sort_order)
   const total = milestones.reduce((s, m) => s + Number(m.amount), 0)
@@ -84,9 +88,23 @@ export function ContractView({
                       <p className="text-xs text-[var(--color-fg-muted)] truncate">{m.description}</p>
                     )}
                   </div>
-                  <span className="font-semibold shrink-0">{formatMoney(m.amount)}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-semibold">{formatMoney(m.amount)}</span>
+                    <MilestoneActions
+                      milestoneId={m.id}
+                      status={m.status}
+                      viewer={viewer}
+                      canAct={canAct}
+                    />
+                  </div>
                 </div>
               ))
+            )}
+
+            {viewer === 'client' && canAct && contract.status === 'active' && (
+              <div className="pt-2">
+                <AddMilestoneForm contractId={contract.id} />
+              </div>
             )}
           </CardContent>
         </Card>

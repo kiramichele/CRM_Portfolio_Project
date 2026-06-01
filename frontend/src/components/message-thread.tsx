@@ -3,10 +3,12 @@
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { sendMessageAction } from '@/lib/actions/messages'
+import { uploadAttachment } from '@/lib/attachments'
+import { Attachments } from '@/components/attachments'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/field'
 import { cn, timeAgo } from '@/lib/utils'
-import { Send } from 'lucide-react'
+import { Send, Paperclip, X } from 'lucide-react'
 import type { Message } from '@/lib/database.types'
 
 export function MessageThread({
@@ -24,9 +26,12 @@ export function MessageThread({
 }) {
   const [messages, setMessages] = useState<Message[]>(initial)
   const [body, setBody] = useState('')
+  const [files, setFiles] = useState<File[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const [nonce, setNonce] = useState(0) // bump to refetch bubble attachments after upload
   const bottomRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   // Live updates for new messages in this thread.
   useEffect(() => {
@@ -52,15 +57,29 @@ export function MessageThread({
   }, [messages.length])
 
   function submit() {
-    if (!body.trim()) return
-    const text = body
+    const text = body.trim()
+    const toUpload = files
+    const messageBody = text || (toUpload.length ? 'Shared a file' : '')
+    if (!messageBody) return
+
     setBody('')
+    setFiles([])
     setError(null)
     start(async () => {
-      const res = await sendMessageAction(threadId, text)
+      const res = await sendMessageAction(threadId, messageBody)
       if (res?.error) {
         setError(res.error)
         setBody(text)
+        setFiles(toUpload)
+        return
+      }
+      if (res?.id && toUpload.length) {
+        try {
+          for (const f of toUpload) await uploadAttachment(f, 'message', res.id)
+          setNonce((n) => n + 1)
+        } catch {
+          setError('Message sent, but a file failed to upload.')
+        }
       }
     })
   }
@@ -93,6 +112,9 @@ export function MessageThread({
                   >
                     {m.body}
                   </div>
+                  <div className={cn('mt-1', mine ? 'flex flex-col items-end' : '')}>
+                    <Attachments key={`att-${m.id}-${nonce}`} entityType="message" entityId={m.id} compact />
+                  </div>
                   <p className={cn('text-[11px] text-[var(--color-fg-muted)] mt-0.5', mine ? 'text-right mr-1' : 'ml-1')}>
                     {timeAgo(m.created_at)}
                   </p>
@@ -107,7 +129,35 @@ export function MessageThread({
       {canSend ? (
         <div className="border-t border-[var(--color-border)] pt-3 mt-2">
           {error && <p className="text-xs text-danger mb-2">{error}</p>}
+          {files.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {files.map((f, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 rounded-full bg-[var(--color-muted)] px-2.5 py-1 text-xs"
+                >
+                  {f.name}
+                  <button onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2 items-end">
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) setFiles((prev) => [...prev, ...Array.from(e.target.files!)])
+                if (fileRef.current) fileRef.current.value = ''
+              }}
+            />
+            <Button variant="outline" size="md" onClick={() => fileRef.current?.click()} disabled={pending}>
+              <Paperclip className="h-4 w-4" />
+            </Button>
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -121,7 +171,7 @@ export function MessageThread({
               placeholder="Type a message…"
               className="min-h-0"
             />
-            <Button onClick={submit} disabled={pending || !body.trim()}>
+            <Button onClick={submit} disabled={pending || (!body.trim() && files.length === 0)}>
               <Send className="h-4 w-4" />
             </Button>
           </div>
