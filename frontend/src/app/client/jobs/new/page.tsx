@@ -7,7 +7,7 @@ import { NewJobForm } from '@/components/new-job-form'
 export default async function NewJobPage() {
   await requirePortal('client')
   const supabase = await createClient()
-  const { data: categories } = await supabase.from('categories').select('id,name').order('name')
+  const { data: categories } = await supabase.from('categories').select('id,name,slug').order('name')
 
   return (
     <div>
