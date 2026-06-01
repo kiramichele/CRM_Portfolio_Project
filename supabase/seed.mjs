@@ -13,14 +13,40 @@
 // All demo accounts share the password below.
 // ============================================================================
 
+import { existsSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
+
+// Load env from a file if present, so you don't have to export shell vars.
+// Looks for these (first found wins per-variable), relative to where you run node.
+for (const p of ['supabase/.env', '.env', '.env.local']) {
+  if (existsSync(p) && typeof process.loadEnvFile === 'function') {
+    try {
+      process.loadEnvFile(p)
+    } catch {
+      /* malformed file — ignore and fall back to real env */
+    }
+  }
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const DEMO_PASSWORD = process.env.SEED_PASSWORD || 'ServiceHub!2026'
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars.')
+  console.error('Missing required env vars:')
+  if (!SUPABASE_URL) console.error('  - SUPABASE_URL')
+  if (!SERVICE_KEY) console.error('  - SUPABASE_SERVICE_ROLE_KEY')
+  console.error(
+    '\nEasiest fix — create a file at supabase/.env with:\n' +
+      '  SUPABASE_URL=https://YOUR-REF.supabase.co\n' +
+      '  SUPABASE_SERVICE_ROLE_KEY=YOUR-SERVICE-ROLE-KEY\n' +
+      'then run:  node supabase/seed.mjs\n' +
+      '(Get both from Supabase → Settings → API. Use the service_role secret, not anon.)',
+  )
+  process.exit(1)
+}
+if (SUPABASE_URL.includes('YOUR-REF') || SUPABASE_URL.includes('<')) {
+  console.error('SUPABASE_URL still has a placeholder — paste your real project URL.')
   process.exit(1)
 }
 
