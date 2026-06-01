@@ -5,15 +5,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/field'
 import { JobCard, type JobCardData } from '@/components/job-card'
 import { Card } from '@/components/ui/card'
+import { NlSearch } from '@/components/ai/nl-search'
 import { Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default async function JobBoardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string }>
+  searchParams: Promise<{ q?: string; category?: string; min?: string; max?: string; type?: string }>
 }) {
-  const { q, category } = await searchParams
+  const { q, category, min, max, type } = await searchParams
   const profile = await getProfile()
   const supabase = await createClient()
 
@@ -30,6 +31,9 @@ export default async function JobBoardPage({
     const cat = (categories ?? []).find((c) => c.slug === category)
     if (cat) query = query.eq('category_id', cat.id)
   }
+  if (min) query = query.gte('budget_max', Number(min)) // job can pay at least `min`
+  if (max) query = query.lte('budget_min', Number(max))
+  if (type === 'fixed' || type === 'hourly') query = query.eq('budget_type', type)
 
   const { data: jobs } = await query
   const list = (jobs as unknown as JobCardData[]) ?? []
@@ -60,7 +64,10 @@ export default async function JobBoardPage({
           {list.length} open job{list.length === 1 ? '' : 's'}
         </p>
 
-        {/* Search (GET form — no JS needed) */}
+        {/* AI natural-language search */}
+        <NlSearch categories={(categories ?? []).map((c) => ({ slug: c.slug }))} />
+
+        {/* Plain search (GET form — no JS needed) */}
         <form className="flex gap-2 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-fg-muted)]" />

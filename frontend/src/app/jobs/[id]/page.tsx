@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { JobStatusBadge, Badge } from '@/components/ui/badge'
 import { JobTimeline } from '@/components/job-timeline'
 import { ApplyForm } from '@/components/apply-form'
+import { MatchFit } from '@/components/ai/match-fit'
+import { Attachments } from '@/components/attachments'
 import { formatBudget, timeAgo } from '@/lib/utils'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import type { Job, JobEvent } from '@/lib/database.types'
@@ -72,6 +74,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               <div className="prose prose-sm max-w-none whitespace-pre-wrap text-[var(--color-fg)]">
                 {j.description}
               </div>
+              <div className="mt-5">
+                <Attachments entityType="job" entityId={j.id} compact />
+              </div>
             </CardContent>
           </Card>
 
@@ -86,7 +91,30 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               </CardContent>
             </Card>
           ) : ctx?.effectiveRole === 'provider' ? (
-            alreadyApplied ? (
+            <>
+              <Card>
+                <CardContent className="pt-6">
+                  <MatchFit
+                    job={{
+                      title: j.title,
+                      description: j.description,
+                      category: j.categories?.name ?? null,
+                      budget_type: j.budget_type,
+                      budget_min: j.budget_min,
+                      budget_max: j.budget_max,
+                    }}
+                    provider={{
+                      display_name: ctx.effectiveProfile.display_name,
+                      headline: ctx.effectiveProfile.headline,
+                      bio: ctx.effectiveProfile.bio,
+                      skills: ctx.effectiveProfile.skills,
+                      hourly_rate: ctx.effectiveProfile.hourly_rate,
+                      location: ctx.effectiveProfile.location,
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            {alreadyApplied ? (
               <Card>
                 <CardContent className="pt-6 flex items-center gap-2 text-sm">
                   <CheckCircle2 className="h-5 w-5 text-success" />
@@ -112,7 +140,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                   This job is no longer accepting applications.
                 </CardContent>
               </Card>
-            )
+            )}
+            </>
           ) : !ctx ? (
             <Card>
               <CardContent className="pt-6 flex items-center justify-between">

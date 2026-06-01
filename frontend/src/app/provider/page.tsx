@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ApplicationStatusBadge } from '@/components/ui/badge'
 import { formatMoney, timeAgo } from '@/lib/utils'
+import { ProfileGapsPanel } from '@/components/ai/profile-gaps'
 import { Send, Star, Briefcase, Wallet, Search, ArrowRight } from 'lucide-react'
 import type { Application } from '@/lib/database.types'
 
@@ -19,18 +20,30 @@ export default async function ProviderDashboard() {
   const uid = ctx.effectiveUserId
   const supabase = await createClient()
 
-  const [{ data: appsData }, { data: contracts }, { data: milestones }] = await Promise.all([
-    supabase
-      .from('applications')
-      .select('id,status,created_at,bid_amount,jobs(id,title)')
-      .eq('provider_id', uid)
-      .order('created_at', { ascending: false }),
-    supabase.from('contracts').select('id,status').eq('provider_id', uid),
-    supabase
-      .from('milestones')
-      .select('amount,status,contracts!inner(provider_id)')
-      .eq('contracts.provider_id', uid),
-  ])
+  const [{ data: appsData }, { data: contracts }, { data: milestones }, { data: peers }] =
+    await Promise.all([
+      supabase
+        .from('applications')
+        .select('id,status,created_at,bid_amount,jobs(id,title)')
+        .eq('provider_id', uid)
+        .order('created_at', { ascending: false }),
+      supabase.from('contracts').select('id,status').eq('provider_id', uid),
+      supabase
+        .from('milestones')
+        .select('amount,status,contracts!inner(provider_id)')
+        .eq('contracts.provider_id', uid),
+      supabase.from('profiles').select('skills').eq('role', 'provider').limit(100),
+    ])
+
+  // Top skills across providers — a proxy for "in demand" on the platform.
+  const skillCounts: Record<string, number> = {}
+  for (const p of (peers as { skills: string[] | null }[]) ?? []) {
+    for (const s of p.skills ?? []) skillCounts[s] = (skillCounts[s] ?? 0) + 1
+  }
+  const inDemandSkills = Object.entries(skillCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([s]) => s)
 
   const apps = (appsData as unknown as AppRow[]) ?? []
   const submitted = apps.filter((a) => a.status === 'submitted').length
@@ -96,6 +109,20 @@ export default async function ProviderDashboard() {
           ))}
         </Card>
       )}
+
+      <div className="mt-6">
+        <ProfileGapsPanel
+          provider={{
+            display_name: ctx.effectiveProfile.display_name,
+            headline: ctx.effectiveProfile.headline,
+            bio: ctx.effectiveProfile.bio,
+            skills: ctx.effectiveProfile.skills,
+            hourly_rate: ctx.effectiveProfile.hourly_rate,
+            location: ctx.effectiveProfile.location,
+          }}
+          inDemandSkills={inDemandSkills}
+        />
+      </div>
     </div>
   )
 }

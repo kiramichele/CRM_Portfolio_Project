@@ -7,6 +7,8 @@ import { JobStatusBadge, ApplicationStatusBadge, Badge } from '@/components/ui/b
 import { JobTimeline } from '@/components/job-timeline'
 import { ApplicantActions } from '@/components/applicant-actions'
 import { JobStatusControl } from '@/components/job-status-control'
+import { ApplicantAiPanel } from '@/components/ai/applicant-ai-panel'
+import { Attachments } from '@/components/attachments'
 import { formatBudget, formatMoney, timeAgo } from '@/lib/utils'
 import { ArrowLeft, Eye } from 'lucide-react'
 import type { Job, JobEvent, Application, Profile } from '@/lib/database.types'
@@ -75,6 +77,24 @@ export default async function ManageJobPage({ params }: { params: Promise<{ id: 
             </Card>
           ) : (
             <div className="space-y-3">
+              <ApplicantAiPanel
+                job={{
+                  title: j.title,
+                  description: j.description,
+                  category: j.categories?.name ?? null,
+                  budget_type: j.budget_type,
+                  budget_min: j.budget_min,
+                  budget_max: j.budget_max,
+                }}
+                applicants={applicants.map((a) => ({
+                  id: a.id,
+                  name: a.provider?.display_name ?? null,
+                  headline: a.provider?.headline ?? null,
+                  skills: a.provider?.skills ?? [],
+                  bid_amount: a.bid_amount,
+                  cover_note: a.cover_note,
+                }))}
+              />
               {applicants.map((a) => (
                 <Card key={a.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -121,6 +141,10 @@ export default async function ManageJobPage({ params }: { params: Promise<{ id: 
                     </div>
                   )}
 
+                  <div className="mt-3">
+                    <Attachments entityType="application" entityId={a.id} compact />
+                  </div>
+
                   <div className="mt-4 flex justify-end">
                     <ApplicantActions applicationId={a.id} jobId={j.id} status={a.status} />
                   </div>
@@ -130,8 +154,21 @@ export default async function ManageJobPage({ params }: { params: Promise<{ id: 
           )}
         </div>
 
-        {/* Timeline */}
-        <div>
+        {/* Timeline + job files */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Job files</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Attachments
+                entityType="job"
+                entityId={j.id}
+                canUpload={!ctx.isImpersonating && ctx.effectiveUserId === j.client_id}
+                currentUserId={ctx.effectiveUserId}
+              />
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle>Activity</CardTitle>

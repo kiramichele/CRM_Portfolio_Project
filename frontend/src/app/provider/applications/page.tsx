@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ApplicationStatusBadge } from '@/components/ui/badge'
+import { Attachments } from '@/components/attachments'
 import { formatMoney, timeAgo } from '@/lib/utils'
 import type { Application } from '@/lib/database.types'
 
@@ -41,23 +42,31 @@ export default async function ProviderApplicationsPage() {
           </Link>
         </Card>
       ) : (
-        <Card className="divide-y divide-[var(--color-border)]">
+        <div className="space-y-3">
           {apps.map((a) => (
-            <Link
-              key={a.id}
-              href={a.jobs ? `/jobs/${a.jobs.id}` : '#'}
-              className="flex items-center justify-between gap-4 p-4 hover:bg-[var(--color-muted)]"
-            >
-              <div className="min-w-0">
-                <p className="font-medium truncate">{a.jobs?.title ?? 'Job'}</p>
-                <p className="text-xs text-[var(--color-fg-muted)]">
-                  Bid {formatMoney(a.bid_amount)} · applied {timeAgo(a.created_at)}
-                </p>
+            <Card key={a.id} className="p-4">
+              <div className="flex items-start justify-between gap-4">
+                <Link href={a.jobs ? `/jobs/${a.jobs.id}` : '#'} className="min-w-0 group">
+                  <p className="font-medium truncate group-hover:text-brand-700">
+                    {a.jobs?.title ?? 'Job'}
+                  </p>
+                  <p className="text-xs text-[var(--color-fg-muted)]">
+                    Bid {formatMoney(a.bid_amount)} · applied {timeAgo(a.created_at)}
+                  </p>
+                </Link>
+                <ApplicationStatusBadge status={a.status} />
               </div>
-              <ApplicationStatusBadge status={a.status} />
-            </Link>
+              <div className="mt-3 border-t border-[var(--color-border)] pt-3">
+                <Attachments
+                  entityType="application"
+                  entityId={a.id}
+                  canUpload={!ctx.isImpersonating}
+                  currentUserId={ctx.effectiveUserId}
+                />
+              </div>
+            </Card>
           ))}
-        </Card>
+        </div>
       )}
     </div>
   )
