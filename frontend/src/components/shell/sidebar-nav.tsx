@@ -3,10 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import type { NavItem } from './nav-config'
+import { NAV } from './nav-config'
+import type { UserRole } from '@/lib/database.types'
 
-export function SidebarNav({ items }: { items: NavItem[] }) {
+export function SidebarNav({ role }: { role: UserRole }) {
   const pathname = usePathname()
+  const items = NAV[role]
 
   return (
     <nav className="space-y-1">
@@ -23,7 +25,7 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
                 : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-muted)] hover:text-[var(--color-fg)]',
             )}
           >
-            <Icon className="h-4.5 w-4.5 shrink-0" style={{ width: 18, height: 18 }} />
+            <Icon className="shrink-0" style={{ width: 18, height: 18 }} />
             {label}
           </Link>
         )

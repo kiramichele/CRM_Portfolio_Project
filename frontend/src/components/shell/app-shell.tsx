@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { EffectiveContext } from '@/lib/auth'
 import type { Notification, UserRole } from '@/lib/database.types'
-import { NAV } from './nav-config'
 import { SidebarNav } from './sidebar-nav'
 import { UserMenu } from './user-menu'
 import { NotificationBell } from './notification-bell'
@@ -32,7 +31,7 @@ export async function AppShell({
         <Link href={`/${role}`} className="text-lg font-bold text-brand-700 px-3 mb-6">
           ServiceHub
         </Link>
-        <SidebarNav items={NAV[role]} />
+        <SidebarNav role={role} />
       </aside>
 
       {/* Main */}
