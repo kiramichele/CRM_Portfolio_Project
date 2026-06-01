@@ -1,0 +1,15 @@
+{
+  "name": "servicehub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Service-marketplace CRM — portfolio project",
+  "type": "module",
+  "scripts": {
+    "seed": "node supabase/seed.mjs",
+    "db:push": "supabase db push"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "supabase": "^2.103.0"
+  }
+}
