@@ -1,6 +1,7 @@
 /** Tiny client for the FastAPI AI service (browser → service, CORS-allowed). */
 
-const BASE = process.env.NEXT_PUBLIC_AI_SERVICE_URL ?? 'http://localhost:8000'
+// Strip trailing slashes so `${BASE}/ai/...` can't become a 404-ing `//ai/...`.
+const BASE = (process.env.NEXT_PUBLIC_AI_SERVICE_URL ?? 'http://localhost:8000').replace(/\/+$/, '')
 
 export class AiError extends Error {}
 

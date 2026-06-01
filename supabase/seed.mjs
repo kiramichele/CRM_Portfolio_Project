@@ -193,6 +193,10 @@ async function main() {
     design: await categoryId('design'),
     data: await categoryId('data'),
     ai: await categoryId('ai-ml'),
+    marketing: await categoryId('marketing'),
+    devops: await categoryId('devops'),
+    writing: await categoryId('writing'),
+    mobile: await categoryId('mobile-development'),
   }
 
   console.log('Creating jobs...')
@@ -309,6 +313,107 @@ async function main() {
     { contract_id: pastContract.id, reviewer_id: maya, reviewee_id: acme, rating: 5,
       comment: 'Clear brief and prompt feedback. Great client.' },
   ])
+
+  console.log('Creating more open jobs for the board (search variety)...')
+  const moreOpen = [
+    { client_id: nordic, category_id: cat.data, status: 'open',
+      title: 'Remote Python data pipeline (Airflow)',
+      description: 'Build and maintain remote ETL pipelines in Python/Airflow feeding our warehouse. Remote, ongoing, async-friendly team.',
+      budget_type: 'hourly', budget_min: 70, budget_max: 110 },
+    { client_id: acme, category_id: cat.mobile, status: 'open',
+      title: 'React Native app for iOS & Android',
+      description: 'Cross-platform mobile app (React Native) with auth, push notifications, and offline sync. Designs provided.',
+      budget_type: 'fixed', budget_min: 9000, budget_max: 16000 },
+    { client_id: nordic, category_id: cat.marketing, status: 'open',
+      title: 'SEO audit + content roadmap',
+      description: 'Technical SEO audit and a 3-month content plan to grow organic traffic for our B2B SaaS.',
+      budget_type: 'fixed', budget_min: 1500, budget_max: 3000 },
+    { client_id: acme, category_id: cat.devops, status: 'open',
+      title: 'Migrate infra to Kubernetes (remote)',
+      description: 'Containerize services and migrate to a managed Kubernetes cluster with CI/CD and observability. Fully remote.',
+      budget_type: 'hourly', budget_min: 90, budget_max: 140 },
+    { client_id: nordic, category_id: cat.writing, status: 'open',
+      title: 'Technical blog writing (remote, ongoing)',
+      description: 'Write 2 developer-focused blog posts per month on data engineering and AI. Remote, byline included.',
+      budget_type: 'fixed', budget_min: 800, budget_max: 1500 },
+    { client_id: acme, category_id: cat.design, status: 'open',
+      title: 'Brand identity & logo design',
+      description: 'Fresh brand identity: logo, color, type, and a one-page brand guide for a new product line.',
+      budget_type: 'fixed', budget_min: 1200, budget_max: 2500 },
+    { client_id: nordic, category_id: cat.web, status: 'open',
+      title: 'Full-stack feature work (Next.js + FastAPI)',
+      description: 'Ship features across our Next.js frontend and FastAPI backend. Remote contract, ~20 hrs/week.',
+      budget_type: 'hourly', budget_min: 65, budget_max: 95 },
+    { client_id: acme, category_id: cat.ai, status: 'open',
+      title: 'LLM evals & prompt optimization (remote)',
+      description: 'Set up an evaluation harness for our LLM features and improve prompt quality and cost. Remote.',
+      budget_type: 'fixed', budget_min: 3000, budget_max: 6000 },
+  ]
+  const { data: openJobs } = await db.from('jobs').insert(moreOpen).select()
+
+  console.log('Creating applications on open jobs...')
+  const byTitle = (s) => openJobs.find((j) => j.title.startsWith(s))
+  await db.from('applications').insert([
+    { job_id: byTitle('Remote Python').id, provider_id: sam, bid_amount: 85, status: 'submitted',
+      cover_note: 'Airflow + Python is my bread and butter. I can take over the pipelines and improve reliability.' },
+    { job_id: byTitle('Full-stack feature').id, provider_id: maya, bid_amount: 80, status: 'shortlisted',
+      cover_note: 'I work across Next.js and FastAPI daily — happy to start part-time this week.' },
+    { job_id: byTitle('Full-stack feature').id, provider_id: lena, bid_amount: 90, status: 'submitted',
+      cover_note: 'Strong full-stack + AI background. I can also help with the LLM features.' },
+    { job_id: byTitle('LLM evals').id, provider_id: lena, bid_amount: 4500, status: 'submitted',
+      cover_note: 'I build eval harnesses and tune prompts for quality and cost. Can show prior results.' },
+    { job_id: byTitle('React Native').id, provider_id: maya, bid_amount: 12000, status: 'submitted',
+      cover_note: 'Shipped several React Native apps with offline sync and push. Designs-ready is ideal.' },
+  ])
+
+  console.log('Creating two more active engagements (contracts + escrow)...')
+  const now = new Date().toISOString()
+  async function createEngagement({ client, provider, category, title, description, amount, milestones }) {
+    const { data: j } = await db
+      .from('jobs')
+      .insert([{ client_id: client, category_id: category, status: 'awarded', title, description, budget_type: 'fixed', budget_min: amount, budget_max: amount }])
+      .select()
+      .single()
+    const { data: app } = await db
+      .from('applications')
+      .insert([{ job_id: j.id, provider_id: provider, bid_amount: amount, status: 'accepted', cover_note: 'Excited to take this on — I can start right away.' }])
+      .select()
+      .single()
+    const { data: c } = await db
+      .from('contracts')
+      .insert([{ job_id: j.id, application_id: app.id, client_id: client, provider_id: provider, agreed_amount: amount, status: 'active' }])
+      .select()
+      .single()
+    await db.from('milestones').insert(milestones.map((m, i) => ({ contract_id: c.id, sort_order: i + 1, ...m })))
+    await db.from('job_events').insert([
+      { job_id: j.id, actor_id: client, event_type: 'opened', detail: 'Job opened for applications' },
+      { job_id: j.id, actor_id: client, event_type: 'awarded', detail: 'Awarded' },
+    ])
+    const { data: th } = await db.from('threads').insert([{ job_id: j.id, client_id: client, provider_id: provider }]).select().single()
+    await db.from('messages').insert([
+      { thread_id: th.id, sender_id: client, body: 'Welcome aboard! Let me know once you kick things off.' },
+      { thread_id: th.id, sender_id: provider, body: "Thanks — starting now. I'll share progress on the first milestone soon." },
+    ])
+  }
+
+  await createEngagement({
+    client: nordic, provider: sam, category: cat.data, amount: 5400,
+    title: 'dbt analytics models + exec dashboard',
+    description: 'Build dbt models and an executive dashboard on our warehouse data.',
+    milestones: [
+      { title: 'Core dbt models', description: 'Staging + mart models with tests.', amount: 2700, status: 'funded', funded_at: now },
+      { title: 'Exec dashboard', description: 'Dashboards + handoff docs.', amount: 2700, status: 'pending' },
+    ],
+  })
+  await createEngagement({
+    client: acme, provider: devon, category: cat.design, amount: 4800,
+    title: 'Mobile app UI/UX design',
+    description: 'End-to-end UI/UX for the new mobile app, delivered in Figma.',
+    milestones: [
+      { title: 'Wireframes + flows', description: 'Low-fi flows and IA.', amount: 1600, status: 'released', funded_at: now, released_at: now },
+      { title: 'High-fidelity UI', description: 'Polished screens + components.', amount: 3200, status: 'funded', funded_at: now },
+    ],
+  })
 
   console.log('\nDone. Demo accounts (password: ' + DEMO_PASSWORD + '):')
   for (const u of USERS) console.log(`  ${u.role.padEnd(9)} ${u.email}`)
