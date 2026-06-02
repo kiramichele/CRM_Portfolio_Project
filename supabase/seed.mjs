@@ -188,6 +188,11 @@ async function main() {
   console.log('Clearing previous demo jobs...')
   await db.from('jobs').delete().in('client_id', [acme, nordic])
 
+  // Notifications have no FK to jobs, so deleting jobs leaves stale notifications
+  // pointing at now-deleted entities (→ 404 on click). Clear them before the
+  // triggers recreate fresh ones during this run.
+  await db.from('notifications').delete().in('user_id', Object.values(id))
+
   const cat = {
     web: await categoryId('web-development'),
     design: await categoryId('design'),
