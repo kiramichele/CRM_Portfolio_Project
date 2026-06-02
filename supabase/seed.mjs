@@ -395,10 +395,25 @@ async function main() {
       { job_id: j.id, actor_id: client, event_type: 'awarded', detail: 'Awarded' },
     ])
     const { data: th } = await db.from('threads').insert([{ job_id: j.id, client_id: client, provider_id: provider }]).select().single()
-    await db.from('messages').insert([
-      { thread_id: th.id, sender_id: client, body: 'Welcome aboard! Let me know once you kick things off.' },
-      { thread_id: th.id, sender_id: provider, body: "Thanks — starting now. I'll share progress on the first milestone soon." },
-    ])
+    // A realistic multi-turn conversation. Stagger created_at so messages render
+    // in order (identical timestamps would have undefined ordering).
+    const convo = [
+      ['client', "Welcome aboard! Really glad to have you on this one. When can you kick off?"],
+      ['provider', "Thanks! I can start tomorrow — I'll send a short plan for the first milestone today."],
+      ['client', "Perfect. I've funded the first milestone, so you're clear to start."],
+      ['provider', "Got it, funds are showing on my end. Diving into the core work now."],
+      ['client', "Great. Shout if you hit any blockers or need anything from us."],
+      ['provider', "Will do. I'll share progress and a preview by the end of the week."],
+    ]
+    const base = Date.now()
+    await db.from('messages').insert(
+      convo.map(([who, body], i) => ({
+        thread_id: th.id,
+        sender_id: who === 'client' ? client : provider,
+        body,
+        created_at: new Date(base + i * 60000).toISOString(),
+      })),
+    )
   }
 
   await createEngagement({
