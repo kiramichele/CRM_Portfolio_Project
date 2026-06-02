@@ -5,14 +5,19 @@ import { PageHeader } from '@/components/ui/page-header'
 import { StatCard } from '@/components/ui/stat-card'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ApplicationStatusBadge } from '@/components/ui/badge'
+import { ApplicationStatusBadge, Badge } from '@/components/ui/badge'
 import { formatMoney, timeAgo } from '@/lib/utils'
 import { ProfileGapsPanel } from '@/components/ai/profile-gaps'
-import { Send, Star, Briefcase, Wallet, Search, ArrowRight } from 'lucide-react'
-import type { Application } from '@/lib/database.types'
+import { Send, Star, Briefcase, Wallet, Search, ArrowRight, FileText } from 'lucide-react'
+import type { Application, Contract } from '@/lib/database.types'
 
 type AppRow = Pick<Application, 'id' | 'status' | 'created_at' | 'bid_amount'> & {
   jobs: { id: string; title: string } | null
+}
+
+type ContractRow = Pick<Contract, 'id' | 'status' | 'agreed_amount' | 'created_at'> & {
+  jobs: { title: string } | null
+  client: { display_name: string } | null
 }
 
 export default async function ProviderDashboard() {
@@ -27,7 +32,11 @@ export default async function ProviderDashboard() {
         .select('id,status,created_at,bid_amount,jobs(id,title)')
         .eq('provider_id', uid)
         .order('created_at', { ascending: false }),
-      supabase.from('contracts').select('id,status').eq('provider_id', uid),
+      supabase
+        .from('contracts')
+        .select('id,status,agreed_amount,created_at,jobs(title),client:profiles!client_id(display_name)')
+        .eq('provider_id', uid)
+        .order('created_at', { ascending: false }),
       supabase
         .from('milestones')
         .select('amount,status,contracts!inner(provider_id)')
@@ -46,9 +55,10 @@ export default async function ProviderDashboard() {
     .map(([s]) => s)
 
   const apps = (appsData as unknown as AppRow[]) ?? []
+  const contractRows = (contracts as unknown as ContractRow[]) ?? []
   const submitted = apps.filter((a) => a.status === 'submitted').length
   const shortlisted = apps.filter((a) => a.status === 'shortlisted').length
-  const activeContracts = (contracts ?? []).filter((c) => c.status === 'active').length
+  const activeContracts = contractRows.filter((c) => c.status === 'active').length
   const earned = ((milestones as unknown as { amount: number; status: string }[]) ?? [])
     .filter((m) => m.status === 'released')
     .reduce((s, m) => s + Number(m.amount), 0)
@@ -73,6 +83,40 @@ export default async function ProviderDashboard() {
         <StatCard label="Active contracts" value={activeContracts} icon={Briefcase} />
         <StatCard label="Earned" value={formatMoney(earned)} icon={Wallet} />
       </div>
+
+      {contractRows.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold">Active contracts</h2>
+            <Link href="/provider/contracts" className="text-sm text-brand-700 flex items-center gap-1">
+              View all <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <Card className="divide-y divide-[var(--color-border)]">
+            {contractRows.slice(0, 5).map((c) => (
+              <Link
+                key={c.id}
+                href={`/provider/contracts/${c.id}`}
+                className="flex items-center justify-between gap-4 p-4 hover:bg-[var(--color-muted)]"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText className="h-4 w-4 shrink-0 text-brand-500" />
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{c.jobs?.title ?? 'Contract'}</p>
+                    <p className="text-xs text-[var(--color-fg-muted)]">
+                      {c.client?.display_name ?? 'Client'} · {formatMoney(c.agreed_amount)} ·{' '}
+                      {timeAgo(c.created_at)}
+                    </p>
+                  </div>
+                </div>
+                <Badge tone={c.status === 'completed' ? 'success' : c.status === 'cancelled' ? 'danger' : 'brand'}>
+                  {c.status}
+                </Badge>
+              </Link>
+            ))}
+          </Card>
+        </div>
+      )}
 
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold">Recent applications</h2>

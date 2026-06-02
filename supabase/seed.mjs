@@ -419,6 +419,17 @@ async function main() {
       { title: 'High-fidelity UI', description: 'Polished screens + components.', amount: 3200, status: 'funded', funded_at: now },
     ],
   })
+  // The demo provider (Maya) gets an active contract too, so the provider
+  // portal looks populated when you "View as Provider".
+  await createEngagement({
+    client: acme, provider: maya, category: cat.web, amount: 6500,
+    title: 'Internal analytics dashboard (Next.js)',
+    description: 'Build an internal analytics dashboard with charts, filters, and a settings area on top of our FastAPI backend.',
+    milestones: [
+      { title: 'Core dashboard + charts', description: 'Main views and chart components.', amount: 3500, status: 'released', funded_at: now, released_at: now },
+      { title: 'Settings + polish', description: 'Settings area, empty states, and QA pass.', amount: 3000, status: 'funded', funded_at: now },
+    ],
+  })
 
   console.log('\nDone. Demo accounts (password: ' + DEMO_PASSWORD + '):')
   for (const u of USERS) console.log(`  ${u.role.padEnd(9)} ${u.email}`)
